@@ -145,48 +145,44 @@ class NewsScraper:
             return
 
         try:
-            # Find article cards - adjust selectors based on actual site structure
-            articles = soup.select("article") or soup.select(".card")
+            # Find article links - STOMP uses /singapore-seen/ pattern
+            article_links = soup.select('a[href*="/singapore-seen/"]')
 
-            if not articles:
-                articles = soup.select("[class*='story']")
-
+            # Deduplicate by URL
+            seen_urls = set()
             count = 0
-            for article in articles:
+
+            for link in article_links:
                 if count >= limit:
                     break
 
                 try:
-                    # Extract title
-                    title_elem = article.select_one("h2 a") or article.select_one("h3 a") or article.select_one("a")
-                    if not title_elem:
+                    url = link.get("href", "")
+                    if not url or url in seen_urls:
                         continue
 
-                    title = self._clean_text(title_elem.get_text())
-                    url = title_elem.get("href", "")
-                    if url and not url.startswith("http"):
-                        url = urljoin(NEWS_SOURCES["stomp"]["url"], url)
+                    seen_urls.add(url)
 
-                    # Extract summary/description
-                    summary_elem = article.select_one("p") or article.select_one(".excerpt")
-                    summary = summary_elem.get_text().strip() if summary_elem else ""
+                    # Build full URL
+                    if not url.startswith("http"):
+                        url = urljoin("https://stomp.straitstimes.com", url)
 
-                    # Extract timestamp
-                    time_elem = article.select_one("time") or article.select_one("[class*='date']")
-                    timestamp = None
-                    if time_elem:
-                        timestamp = time_elem.get("datetime") or time_elem.get_text()
+                    # Remove query params for cleaner URL
+                    url = url.split("?")[0]
 
-                    combined_text = f"{title} {summary}"
+                    title = self._clean_text(link.get_text())
+                    if not title or len(title) < 20:
+                        continue
 
+                    # STOMP articles are inherently complaints/reports
                     yield {
                         "source": "stomp.sg",
                         "title": title,
-                        "content": self._clean_text(summary) if summary else title,
+                        "content": title,  # Will fetch full content if needed
                         "url": url,
                         "author": "STOMP",
-                        "post_timestamp": timestamp,
-                        "is_candidate": self._is_pain_point_candidate(combined_text),
+                        "post_timestamp": datetime.now().isoformat(),
+                        "is_candidate": True,  # STOMP content is almost always pain-point relevant
                     }
 
                     count += 1
@@ -194,6 +190,8 @@ class NewsScraper:
                 except Exception as e:
                     print(f"  Error parsing STOMP article: {e}")
                     continue
+
+            print(f"  Found {count} STOMP articles")
 
         except Exception as e:
             print(f"  Error scraping STOMP: {e}")

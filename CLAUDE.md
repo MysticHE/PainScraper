@@ -1,5 +1,64 @@
 # SG Pain Point Scraper - Project Instructions
 
+## Project Status
+
+### Scraper Status (as of 2026-01-15)
+
+| Platform | Status | Notes |
+|----------|--------|-------|
+| **Mothership.sg** | ✅ Working | RSS feed scraping |
+| **STOMP** | ✅ Working | Uses `/singapore-seen/` URL pattern |
+| **HardwareZone** | ✅ Working | EDMW forum, 50 threads/run |
+| **Reddit** | ⏳ Pending | Awaiting API approval |
+| **Twitter/X** | ❌ Disabled | Rate limits, requires Selenium |
+
+### Current Data
+- **Total Posts**: 69+
+- **Sources Active**: 3 (Mothership, STOMP, HWZ)
+- **Dashboard**: `docs/index.html`
+
+---
+
+## Phase 2: Reddit Integration (PENDING API APPROVAL)
+
+### When Reddit API is Approved
+
+1. **Configure credentials** in `config.py` or environment:
+   ```bash
+   # Windows PowerShell
+   $env:REDDIT_CLIENT_ID="your_client_id"
+   $env:REDDIT_CLIENT_SECRET="your_secret"
+   $env:REDDIT_USER_AGENT="SGPainPointScraper/1.0 by YourUsername"
+   ```
+
+2. **Or edit config.py directly** (lines 20-26):
+   ```python
+   REDDIT_CONFIG = {
+       "client_id": "YOUR_APPROVED_CLIENT_ID",
+       "client_secret": "YOUR_APPROVED_SECRET",
+       "user_agent": "SGPainPointScraper/1.0 by YourUsername",
+   }
+   ```
+
+3. **Test Reddit scraper**:
+   ```bash
+   cd C:\Users\huien\projects\sg-pain-point-scraper
+   python -c "from scrapers.reddit_scraper import test_scraper; test_scraper()"
+   ```
+
+4. **Run full pipeline**:
+   ```bash
+   python main.py --all
+   ```
+
+### Target Subreddits (config.py)
+- r/singapore - General discussions
+- r/askSingapore - Problem-seeking posts
+- r/singaporefi - Financial pain points
+- r/SGExams - Education/career anxiety
+
+---
+
 ## Deployment Workflow
 
 This project uses GitHub Actions with **manual/scheduled triggers only** (no push trigger).
@@ -43,3 +102,68 @@ gh run list --limit 5
 - Pushing code does NOT auto-deploy - must trigger workflow manually
 - Dashboard regeneration happens in the workflow, not locally
 - Local `docs/` folder is gitignored after initial setup
+
+---
+
+## Known Issues & Future Improvements
+
+### Critical (to fix)
+- [ ] Add error recovery with retry logic (currently silent failures)
+- [ ] Implement structured logging (replace print statements)
+- [ ] Add proper exception handling with context
+
+### Important (planned)
+- [ ] Parallelize classification for better throughput
+- [ ] Add database cleanup/archival for old posts
+- [ ] Normalize timestamps across scrapers (timezone handling)
+
+### Code Quality
+- [ ] Extract hardcoded values to config
+- [ ] Add unit tests for JSON parsing
+- [ ] Standardize return types across scrapers
+
+---
+
+## Quick Commands
+
+```bash
+# Run all working scrapers
+python main.py --scrape --news --hwz
+
+# Classify posts (requires Ollama running)
+python main.py --classify --limit 50
+
+# Generate dashboard only
+python generate_dashboard.py
+
+# Full pipeline (scrape + classify + report)
+python main.py --all
+
+# Test individual scrapers
+python -c "from scrapers.news_scraper import test_scraper; test_scraper()"
+python -c "from scrapers.hwz_scraper import test_scraper; test_scraper()"
+```
+
+---
+
+## File Structure
+
+```
+sg-pain-point-scraper/
+├── config.py              # All configuration (API keys, subreddits, etc.)
+├── main.py                # CLI orchestrator
+├── database.py            # SQLite operations
+├── classifier.py          # Ollama LLM classification
+├── report.py              # Markdown report generation
+├── generate_dashboard.py  # HTML dashboard generation
+├── scrapers/
+│   ├── reddit_scraper.py  # Reddit via PRAW (pending API)
+│   ├── hwz_scraper.py     # HardwareZone EDMW
+│   ├── news_scraper.py    # Mothership + STOMP
+│   └── twitter_scraper.py # Twitter/X (disabled)
+├── data/
+│   └── painpoints.db      # SQLite database
+├── docs/
+│   └── index.html         # Dashboard (auto-generated)
+└── reports/               # Markdown reports
+```

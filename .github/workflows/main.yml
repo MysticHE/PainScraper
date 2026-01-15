@@ -2,7 +2,7 @@ name: SG Pain Point Scraper
 
   on:
     schedule:
-      - cron: '0 6 * * *'
+      - cron: "0 6 * * *"
     workflow_dispatch:
 
   jobs:
@@ -13,8 +13,8 @@ name: SG Pain Point Scraper
 
         - uses: actions/setup-python@v5
           with:
-            python-version: '3.11'
-            cache: 'pip'
+            python-version: "3.11"
+            cache: pip
 
         - run: pip install -r requirements.txt
 

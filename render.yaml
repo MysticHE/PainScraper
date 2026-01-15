@@ -1,0 +1,26 @@
+# Render Blueprint - Infrastructure as Code
+# https://render.com/docs/blueprint-spec
+
+services:
+  # Cron Job - Runs daily scraping
+  - type: cron
+    name: sg-pain-point-scraper
+    runtime: python
+    schedule: "0 6 * * *"  # Daily at 6 AM UTC (2 PM SGT)
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main_cloud.py --all
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: GROQ_API_KEY
+        sync: false  # Set manually in Render dashboard
+      - key: REDDIT_CLIENT_ID
+        sync: false
+      - key: REDDIT_CLIENT_SECRET
+        sync: false
+      - key: REDDIT_USER_AGENT
+        value: "SGPainPointScraper/1.0"
+    disk:
+      name: scraper-data
+      mountPath: /data
+      sizeGB: 1

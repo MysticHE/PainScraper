@@ -1,43 +1,43 @@
 name: SG Pain Point Scraper
 
 on:
-    schedule:
-      - cron: "0 6 * * *"
-    workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
 
 jobs:
-    scrape:
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v4
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-        - uses: actions/setup-python@v5
-          with:
-            python-version: "3.11"
-            cache: pip
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
 
-        - run: pip install -r requirements.txt
+      - run: pip install -r requirements.txt
 
-        - uses: actions/download-artifact@v4
-          continue-on-error: true
-          with:
-            name: painpoints-db
-            path: data/
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: painpoints-db
+          path: data/
 
-        - run: mkdir -p data reports
+      - run: mkdir -p data reports
 
-        - name: Run scraper
-          run: python main_cloud.py --scrape --news --classify --report --limit 50
-          env:
-            GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      - name: Run scraper
+        run: python main_cloud.py --scrape --news --classify --report --limit 50
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
 
-        - uses: actions/upload-artifact@v4
-          with:
-            name: painpoints-db
-            path: data/painpoints.db
-            retention-days: 90
+      - uses: actions/upload-artifact@v4
+        with:
+          name: painpoints-db
+          path: data/painpoints.db
+          retention-days: 90
 
-        - uses: actions/upload-artifact@v4
-          with:
-            name: report-${{ github.run_number }}
-            path: reports/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: report-${{ github.run_number }}
+          path: reports/

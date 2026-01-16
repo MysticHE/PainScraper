@@ -7,6 +7,7 @@ from pathlib import Path
 
 from database import (
     get_pain_points,
+    get_all_posts,
     get_category_stats,
     get_automation_opportunities,
     get_total_stats,
@@ -34,25 +35,27 @@ def generate_dashboard(output_path=None):
     # Gather data
     stats = get_total_stats()
     category_stats = get_category_stats()
-    pain_points = get_pain_points(min_intensity=1, limit=50)
+    all_posts = get_all_posts(limit=100)  # Get all posts for the table
+    pain_points = get_pain_points(min_intensity=1, limit=50)  # For charts/stats
     automation_ops = get_automation_opportunities(min_intensity=5, limit=10)
 
     # Extract unique sources for filter dropdown
-    unique_sources = sorted(set(pp.get('source', 'unknown') for pp in pain_points if pp.get('source')))
+    unique_sources = sorted(set(pp.get('source', 'unknown') for pp in all_posts if pp.get('source')))
 
-    # Prepare pain points data for JavaScript (all 50 items)
+    # Prepare all posts data for JavaScript (includes is_pain_point flag)
     pain_points_json_data = []
-    for pp in pain_points:
+    for pp in all_posts:
         scraped_at = pp.get('scraped_at', '')
         date_str = scraped_at[:10] if scraped_at else ''
         pain_points_json_data.append({
             'title': (pp.get('title') or 'No title')[:60],
             'url': pp.get('url', '#'),
-            'category': pp.get('category', 'N/A'),
+            'category': pp.get('category', 'N/A') or 'N/A',
             'intensity': pp.get('intensity', 0) or 0,
-            'audience': pp.get('audience', 'N/A'),
+            'audience': pp.get('audience', 'N/A') or 'N/A',
             'source': pp.get('source', 'N/A'),
             'date': date_str,
+            'is_pain_point': bool(pp.get('is_pain_point', False)),
         })
 
     # Build pain point rows
@@ -375,6 +378,16 @@ def generate_dashboard(output_path=None):
                 </div>
                 <!-- Filters Row -->
                 <div class="flex flex-wrap items-center gap-3">
+                    <!-- Pain Points Toggle -->
+                    <div class="flex items-center gap-2 bg-gray-800/50 rounded-lg p-1">
+                        <button id="btnAllPosts" onclick="setViewMode('all')" class="px-3 py-1.5 rounded-md text-sm transition-colors bg-primary-500 text-white">
+                            All Posts
+                        </button>
+                        <button id="btnPainPoints" onclick="setViewMode('pain')" class="px-3 py-1.5 rounded-md text-sm transition-colors text-gray-400 hover:text-white">
+                            Pain Points Only
+                        </button>
+                    </div>
+                    <div class="h-6 w-px bg-gray-700 hidden md:block"></div>
                     <div class="flex items-center gap-2">
                         <label class="text-sm text-gray-400">Source:</label>
                         <select id="sourceFilter" class="search-input px-3 py-1.5 rounded-lg text-sm text-white bg-transparent">
@@ -397,9 +410,9 @@ def generate_dashboard(output_path=None):
                     <thead>
                         <tr class="text-left text-gray-400 border-b border-gray-700/50">
                             <th class="pb-4 font-medium text-sm">Title</th>
+                            <th class="pb-4 font-medium text-sm">Type</th>
                             <th class="pb-4 font-medium text-sm">Category</th>
                             <th class="pb-4 font-medium text-sm">Intensity</th>
-                            <th class="pb-4 font-medium text-sm hidden md:table-cell">Audience</th>
                             <th class="pb-4 font-medium text-sm hidden md:table-cell">Source</th>
                             <th class="pb-4 font-medium text-sm hidden md:table-cell">Date</th>
                         </tr>
@@ -594,6 +607,7 @@ def generate_dashboard(output_path=None):
         const MAX_PAGES = 5;
         let currentPage = 1;
         let filteredData = [...allPainPoints];
+        let viewMode = 'all'; // 'all' or 'pain'
 
         // Initialize filters
         function initFilters() {{
@@ -629,12 +643,30 @@ def generate_dashboard(output_path=None):
             return 'intensity-low';
         }}
 
+        function setViewMode(mode) {{
+            viewMode = mode;
+            // Update button styles
+            const btnAll = document.getElementById('btnAllPosts');
+            const btnPain = document.getElementById('btnPainPoints');
+            if (mode === 'all') {{
+                btnAll.className = 'px-3 py-1.5 rounded-md text-sm transition-colors bg-primary-500 text-white';
+                btnPain.className = 'px-3 py-1.5 rounded-md text-sm transition-colors text-gray-400 hover:text-white';
+            }} else {{
+                btnAll.className = 'px-3 py-1.5 rounded-md text-sm transition-colors text-gray-400 hover:text-white';
+                btnPain.className = 'px-3 py-1.5 rounded-md text-sm transition-colors bg-primary-500 text-white';
+            }}
+            applyFilters();
+        }}
+
         function applyFilters() {{
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
             const sourceValue = document.getElementById('sourceFilter').value;
             const dateValue = document.getElementById('dateFilter').value;
 
             filteredData = allPainPoints.filter(pp => {{
+                // Filter by view mode
+                if (viewMode === 'pain' && !pp.is_pain_point) return false;
+
                 const matchesSearch = !searchTerm ||
                     pp.title.toLowerCase().includes(searchTerm) ||
                     pp.category.toLowerCase().includes(searchTerm) ||
@@ -666,7 +698,7 @@ def generate_dashboard(output_path=None):
             const pageData = displayData.slice(startIdx, endIdx);
 
             if (pageData.length === 0) {{
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">No pain points match your filters</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">No posts match your filters</td></tr>';
             }} else {{
                 tbody.innerHTML = pageData.map(pp => `
                     <tr class="table-row border-b border-gray-800/30">
@@ -674,12 +706,17 @@ def generate_dashboard(output_path=None):
                             <a href="${{pp.url}}" target="_blank" class="hover:text-primary-400 transition-colors font-medium">${{pp.title}}...</a>
                         </td>
                         <td class="py-4">
+                            ${{pp.is_pain_point
+                                ? '<span class="px-2 py-1 bg-red-500/20 text-red-300 rounded-full text-xs font-medium">Pain Point</span>'
+                                : '<span class="px-2 py-1 bg-gray-500/20 text-gray-400 rounded-full text-xs font-medium">General</span>'
+                            }}
+                        </td>
+                        <td class="py-4">
                             <span class="badge px-3 py-1 bg-primary-500/15 text-primary-300 rounded-full text-xs font-medium">${{pp.category}}</span>
                         </td>
                         <td class="py-4">
-                            <span class="${{getIntensityClass(pp.intensity)}} font-bold tabular-nums">${{pp.intensity}}/10</span>
+                            <span class="${{getIntensityClass(pp.intensity)}} font-bold tabular-nums">${{pp.intensity || '-'}}/10</span>
                         </td>
-                        <td class="py-4 text-gray-300 hidden md:table-cell">${{pp.audience}}</td>
                         <td class="py-4 text-gray-500 hidden md:table-cell">${{pp.source}}</td>
                         <td class="py-4 text-gray-500 hidden md:table-cell">${{pp.date || 'N/A'}}</td>
                     </tr>

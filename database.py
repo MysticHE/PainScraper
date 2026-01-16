@@ -220,6 +220,27 @@ def get_pain_points(
         return results
 
 
+def get_all_posts(limit: int = 100) -> list:
+    """Get all classified posts (pain points and non-pain points)."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT p.*, c.is_pain_point, c.category, c.audience, c.intensity,
+                   c.automation_potential, c.suggested_solution, c.keywords, c.summary
+            FROM posts p
+            JOIN classifications c ON p.id = c.post_id
+            ORDER BY p.scraped_at DESC
+            LIMIT ?
+        """, (limit,))
+        results = []
+        for row in cursor.fetchall():
+            item = dict(row)
+            if item.get("keywords"):
+                item["keywords"] = json.loads(item["keywords"])
+            results.append(item)
+        return results
+
+
 def get_category_stats() -> dict:
     """Get pain point counts by category."""
     with get_connection() as conn:

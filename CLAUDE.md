@@ -3,7 +3,7 @@
 ## PROJECT LOCATION
 
 ```
-Path: C:\Users\huien\projects\sg-pain-point-scraper
+Path: C:\Users\huien\reddit\sg-pain-point-scraper
 Repo: https://github.com/MysticHE/PainScraper
 Live: https://mystiche.github.io/PainScraper/
 ```

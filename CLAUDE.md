@@ -44,13 +44,13 @@ This regenerates the dashboard and deploys to GitHub Pages.
 | **Mothership.sg** | ✅ Working | RSS feed (`feedparser`) |
 | **STOMP** | ✅ Working | Web scraping (`/singapore-seen/` pattern) |
 | **HardwareZone** | ✅ Working | Web scraping (EDMW forum) |
-| **Twitter/X** | ✅ Enabled | Selenium (rate-limited, may fail) |
 
 ### Pending Platforms
 
 | Platform | Status | Blocker |
 |----------|--------|---------|
 | **Reddit** | ⏳ Pending | Awaiting API approval from Reddit |
+| **Twitter/X** | ❌ Disabled | Requires login, blocked by rate limits |
 
 ---
 

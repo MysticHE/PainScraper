@@ -1,5 +1,29 @@
 # SG Pain Point Scraper - Project Instructions
 
+## PROJECT LOCATION
+
+```
+Path: C:\Users\huien\projects\sg-pain-point-scraper
+Repo: https://github.com/MysticHE/PainScraper
+Live: https://mystiche.github.io/PainScraper/
+```
+
+**DO NOT** look for this project in other folders. This is the ONLY location.
+
+---
+
+## WORKFLOW RULE: Auto-Trigger on Push
+
+**ALWAYS** trigger the GitHub Actions workflow after pushing to main:
+
+```bash
+git push origin main && gh workflow run main.yml --ref main
+```
+
+This regenerates the dashboard and deploys to GitHub Pages.
+
+---
+
 ## IMPORTANT: Read First
 
 - **Deployment**: GitHub Actions ONLY (not local)

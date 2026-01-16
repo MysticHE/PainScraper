@@ -37,6 +37,24 @@ def generate_dashboard(output_path=None):
     pain_points = get_pain_points(min_intensity=1, limit=50)
     automation_ops = get_automation_opportunities(min_intensity=5, limit=10)
 
+    # Extract unique sources for filter dropdown
+    unique_sources = sorted(set(pp.get('source', 'unknown') for pp in pain_points if pp.get('source')))
+
+    # Prepare pain points data for JavaScript (all 50 items)
+    pain_points_json_data = []
+    for pp in pain_points:
+        scraped_at = pp.get('scraped_at', '')
+        date_str = scraped_at[:10] if scraped_at else ''
+        pain_points_json_data.append({
+            'title': (pp.get('title') or 'No title')[:60],
+            'url': pp.get('url', '#'),
+            'category': pp.get('category', 'N/A'),
+            'intensity': pp.get('intensity', 0) or 0,
+            'audience': pp.get('audience', 'N/A'),
+            'source': pp.get('source', 'N/A'),
+            'date': date_str,
+        })
+
     # Build pain point rows
     rows = []
     for pp in pain_points[:15]:
@@ -113,6 +131,8 @@ def generate_dashboard(output_path=None):
     category_labels_json = json.dumps(category_labels)
     category_data_json = json.dumps(category_data)
     intensity_data_json = json.dumps([low, med, high])
+    pain_points_data_json = json.dumps(pain_points_json_data)
+    sources_json = json.dumps(unique_sources)
 
     html = f'''<!DOCTYPE html>
 <html lang="en">
@@ -341,14 +361,35 @@ def generate_dashboard(output_path=None):
 
         <!-- Pain Points Table -->
         <div class="card rounded-2xl p-6 mb-12">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                <h2 class="text-lg font-semibold flex items-center gap-2">
-                    <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z"/></svg>
-                    Top Pain Points
-                </h2>
-                <div class="relative">
-                    <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                    <input type="text" id="searchInput" placeholder="Search pain points..." class="search-input pl-10 pr-4 py-2 rounded-lg text-sm text-white w-full md:w-64" onkeyup="filterTable()">
+            <div class="flex flex-col gap-4 mb-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <h2 class="text-lg font-semibold flex items-center gap-2">
+                        <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z"/></svg>
+                        Top Pain Points
+                        <span id="resultCount" class="text-sm font-normal text-gray-400 ml-2"></span>
+                    </h2>
+                    <div class="relative">
+                        <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        <input type="text" id="searchInput" placeholder="Search pain points..." class="search-input pl-10 pr-4 py-2 rounded-lg text-sm text-white w-full md:w-64">
+                    </div>
+                </div>
+                <!-- Filters Row -->
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm text-gray-400">Source:</label>
+                        <select id="sourceFilter" class="search-input px-3 py-1.5 rounded-lg text-sm text-white bg-transparent">
+                            <option value="">All Sources</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm text-gray-400">Date:</label>
+                        <select id="dateFilter" class="search-input px-3 py-1.5 rounded-lg text-sm text-white bg-transparent">
+                            <option value="">All Dates</option>
+                        </select>
+                    </div>
+                    <button onclick="clearFilters()" class="text-sm text-primary-400 hover:text-primary-300 transition-colors">
+                        Clear Filters
+                    </button>
                 </div>
             </div>
             <div class="overflow-x-auto">
@@ -360,12 +401,30 @@ def generate_dashboard(output_path=None):
                             <th class="pb-4 font-medium text-sm">Intensity</th>
                             <th class="pb-4 font-medium text-sm hidden md:table-cell">Audience</th>
                             <th class="pb-4 font-medium text-sm hidden md:table-cell">Source</th>
+                            <th class="pb-4 font-medium text-sm hidden md:table-cell">Date</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {pain_point_rows}
+                    <tbody id="painPointsBody">
+                        <!-- Dynamically populated -->
                     </tbody>
                 </table>
+            </div>
+            <!-- Pagination -->
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t border-gray-700/50">
+                <div class="text-sm text-gray-400">
+                    Showing <span id="showingStart">1</span>-<span id="showingEnd">10</span> of <span id="totalFiltered">0</span> results
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="prevBtn" onclick="changePage(-1)" class="px-3 py-1.5 rounded-lg text-sm bg-gray-800/50 text-gray-400 hover:bg-gray-700/50 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        Previous
+                    </button>
+                    <div id="pageNumbers" class="flex items-center gap-1">
+                        <!-- Page numbers dynamically populated -->
+                    </div>
+                    <button id="nextBtn" onclick="changePage(1)" class="px-3 py-1.5 rounded-lg text-sm bg-gray-800/50 text-gray-400 hover:bg-gray-700/50 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        Next
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -528,25 +587,149 @@ def generate_dashboard(output_path=None):
             }}
         }});
 
-        // Search/Filter functionality
-        function filterTable() {{
-            const input = document.getElementById('searchInput');
-            const filter = input.value.toLowerCase();
-            const table = document.getElementById('painPointsTable');
-            const rows = table.getElementsByTagName('tr');
+        // Pain Points Data and Pagination
+        const allPainPoints = {pain_points_data_json};
+        const sources = {sources_json};
+        const ITEMS_PER_PAGE = 10;
+        const MAX_PAGES = 5;
+        let currentPage = 1;
+        let filteredData = [...allPainPoints];
 
-            for (let i = 1; i < rows.length; i++) {{
-                const cells = rows[i].getElementsByTagName('td');
-                let match = false;
-                for (let j = 0; j < cells.length; j++) {{
-                    if (cells[j].textContent.toLowerCase().includes(filter)) {{
-                        match = true;
-                        break;
-                    }}
-                }}
-                rows[i].style.display = match ? '' : 'none';
+        // Initialize filters
+        function initFilters() {{
+            const sourceFilter = document.getElementById('sourceFilter');
+            const dateFilter = document.getElementById('dateFilter');
+
+            // Populate source filter
+            sources.forEach(source => {{
+                const option = document.createElement('option');
+                option.value = source;
+                option.textContent = source;
+                sourceFilter.appendChild(option);
+            }});
+
+            // Extract unique dates and populate date filter
+            const dates = [...new Set(allPainPoints.map(pp => pp.date).filter(d => d))].sort().reverse();
+            dates.forEach(date => {{
+                const option = document.createElement('option');
+                option.value = date;
+                option.textContent = date;
+                dateFilter.appendChild(option);
+            }});
+
+            // Add event listeners
+            document.getElementById('searchInput').addEventListener('input', applyFilters);
+            sourceFilter.addEventListener('change', applyFilters);
+            dateFilter.addEventListener('change', applyFilters);
+        }}
+
+        function getIntensityClass(intensity) {{
+            if (intensity >= 7) return 'intensity-high';
+            if (intensity >= 4) return 'intensity-med';
+            return 'intensity-low';
+        }}
+
+        function applyFilters() {{
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const sourceValue = document.getElementById('sourceFilter').value;
+            const dateValue = document.getElementById('dateFilter').value;
+
+            filteredData = allPainPoints.filter(pp => {{
+                const matchesSearch = !searchTerm ||
+                    pp.title.toLowerCase().includes(searchTerm) ||
+                    pp.category.toLowerCase().includes(searchTerm) ||
+                    pp.source.toLowerCase().includes(searchTerm);
+                const matchesSource = !sourceValue || pp.source === sourceValue;
+                const matchesDate = !dateValue || pp.date === dateValue;
+                return matchesSearch && matchesSource && matchesDate;
+            }});
+
+            currentPage = 1;
+            renderTable();
+        }}
+
+        function clearFilters() {{
+            document.getElementById('searchInput').value = '';
+            document.getElementById('sourceFilter').value = '';
+            document.getElementById('dateFilter').value = '';
+            applyFilters();
+        }}
+
+        function renderTable() {{
+            const tbody = document.getElementById('painPointsBody');
+            const totalPages = Math.min(Math.ceil(filteredData.length / ITEMS_PER_PAGE), MAX_PAGES);
+            const maxItems = MAX_PAGES * ITEMS_PER_PAGE;
+            const displayData = filteredData.slice(0, maxItems);
+
+            const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+            const endIdx = Math.min(startIdx + ITEMS_PER_PAGE, displayData.length);
+            const pageData = displayData.slice(startIdx, endIdx);
+
+            if (pageData.length === 0) {{
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">No pain points match your filters</td></tr>';
+            }} else {{
+                tbody.innerHTML = pageData.map(pp => `
+                    <tr class="table-row border-b border-gray-800/30">
+                        <td class="py-4 pr-4">
+                            <a href="${{pp.url}}" target="_blank" class="hover:text-primary-400 transition-colors font-medium">${{pp.title}}...</a>
+                        </td>
+                        <td class="py-4">
+                            <span class="badge px-3 py-1 bg-primary-500/15 text-primary-300 rounded-full text-xs font-medium">${{pp.category}}</span>
+                        </td>
+                        <td class="py-4">
+                            <span class="${{getIntensityClass(pp.intensity)}} font-bold tabular-nums">${{pp.intensity}}/10</span>
+                        </td>
+                        <td class="py-4 text-gray-300 hidden md:table-cell">${{pp.audience}}</td>
+                        <td class="py-4 text-gray-500 hidden md:table-cell">${{pp.source}}</td>
+                        <td class="py-4 text-gray-500 hidden md:table-cell">${{pp.date || 'N/A'}}</td>
+                    </tr>
+                `).join('');
+            }}
+
+            // Update pagination info
+            document.getElementById('showingStart').textContent = displayData.length > 0 ? startIdx + 1 : 0;
+            document.getElementById('showingEnd').textContent = endIdx;
+            document.getElementById('totalFiltered').textContent = Math.min(filteredData.length, maxItems);
+
+            // Update pagination buttons
+            document.getElementById('prevBtn').disabled = currentPage === 1;
+            document.getElementById('nextBtn').disabled = currentPage >= totalPages || totalPages === 0;
+
+            // Render page numbers
+            const pageNumbersDiv = document.getElementById('pageNumbers');
+            pageNumbersDiv.innerHTML = '';
+            for (let i = 1; i <= totalPages; i++) {{
+                const btn = document.createElement('button');
+                btn.textContent = i;
+                btn.className = `px-3 py-1.5 rounded-lg text-sm transition-colors ${{
+                    i === currentPage
+                        ? 'bg-primary-500 text-white'
+                        : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700/50 hover:text-white'
+                }}`;
+                btn.onclick = () => goToPage(i);
+                pageNumbersDiv.appendChild(btn);
             }}
         }}
+
+        function changePage(delta) {{
+            const totalPages = Math.min(Math.ceil(filteredData.length / ITEMS_PER_PAGE), MAX_PAGES);
+            const newPage = currentPage + delta;
+            if (newPage >= 1 && newPage <= totalPages) {{
+                currentPage = newPage;
+                renderTable();
+            }}
+        }}
+
+        function goToPage(page) {{
+            currentPage = page;
+            renderTable();
+        }}
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {{
+            initFilters();
+            renderTable();
+        }});
 
         // Chart.js global defaults
         Chart.defaults.font.family = "'Manrope', system-ui, sans-serif";

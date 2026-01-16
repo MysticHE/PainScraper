@@ -15,15 +15,15 @@ if DATA_DIR.exists():
     os.environ["REPORTS_DIR"] = str(DATA_DIR / "reports")
 
 from database import init_database, get_total_stats
-from scrapers import RedditScraper, HWZScraper, NewsScraper
+from scrapers import RedditScraper, HWZScraper, NewsScraper, TwitterScraper
 from classifier_cloud import classify_unclassified_cloud
 from report import generate_report
 from config import REDDIT_CONFIG
 
 
-def run_scrapers(reddit: bool = True, hwz: bool = True, news: bool = True) -> dict:
+def run_scrapers(reddit: bool = True, hwz: bool = True, news: bool = True, twitter: bool = False) -> dict:
     """Run selected scrapers."""
-    stats = {"reddit": 0, "hwz": 0, "news": 0}
+    stats = {"reddit": 0, "hwz": 0, "news": 0, "twitter": 0}
 
     if reddit:
         client_id = os.getenv("REDDIT_CLIENT_ID", REDDIT_CONFIG["client_id"])
@@ -53,6 +53,14 @@ def run_scrapers(reddit: bool = True, hwz: bool = True, news: bool = True) -> di
         except Exception as e:
             print(f"\n[ERROR] News scraper failed: {e}")
 
+    if twitter:
+        try:
+            scraper = TwitterScraper(headless=True)
+            ids = scraper.scrape_all()
+            stats["twitter"] = len(ids)
+        except Exception as e:
+            print(f"\n[ERROR] Twitter scraper failed: {e}")
+
     return stats
 
 
@@ -66,6 +74,7 @@ def main():
     parser.add_argument("--reddit", action="store_true", help="Include Reddit")
     parser.add_argument("--hwz", action="store_true", help="Include HWZ")
     parser.add_argument("--news", action="store_true", help="Include news")
+    parser.add_argument("--twitter", action="store_true", help="Include Twitter/X")
     parser.add_argument("--limit", type=int, default=100, help="Classification limit")
 
     args = parser.parse_args()
@@ -87,11 +96,12 @@ def main():
         print("PHASE 1: SCRAPING")
         print("=" * 40)
 
-        no_specific = not any([args.reddit, args.hwz, args.news])
+        no_specific = not any([args.reddit, args.hwz, args.news, args.twitter])
         scrape_stats = run_scrapers(
             reddit=args.reddit or no_specific,
             hwz=args.hwz or no_specific,
             news=args.news or no_specific,
+            twitter=args.twitter,  # Twitter only runs when explicitly requested
         )
 
         print("\n--- Scraping Summary ---")

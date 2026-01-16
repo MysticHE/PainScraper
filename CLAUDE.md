@@ -35,7 +35,7 @@ This regenerates the dashboard and deploys to GitHub Pages.
 
 ---
 
-## Project Status (as of 2026-01-15)
+## Project Status (as of 2026-01-16)
 
 ### Working Platforms
 
@@ -44,13 +44,13 @@ This regenerates the dashboard and deploys to GitHub Pages.
 | **Mothership.sg** | ✅ Working | RSS feed (`feedparser`) |
 | **STOMP** | ✅ Working | Web scraping (`/singapore-seen/` pattern) |
 | **HardwareZone** | ✅ Working | Web scraping (EDMW forum) |
+| **Twitter/X** | ✅ Enabled | Selenium (rate-limited, may fail) |
 
 ### Pending Platforms
 
 | Platform | Status | Blocker |
 |----------|--------|---------|
 | **Reddit** | ⏳ Pending | Awaiting API approval from Reddit |
-| **Twitter/X** | ❌ Disabled | Rate limits, low priority |
 
 ---
 
@@ -139,7 +139,7 @@ sg-pain-point-scraper/
 │   ├── news_scraper.py    # Mothership + STOMP ✅
 │   ├── hwz_scraper.py     # HardwareZone ✅
 │   ├── reddit_scraper.py  # Reddit (pending API)
-│   └── twitter_scraper.py # Twitter (disabled)
+│   └── twitter_scraper.py # Twitter/X ✅ (rate-limited)
 ├── .github/workflows/
 │   └── main.yml           # GitHub Actions workflow
 └── docs/
@@ -153,6 +153,7 @@ sg-pain-point-scraper/
 - [ ] Silent failures in scrapers (no retry logic)
 - [ ] No structured logging
 - [ ] Timestamps not normalized across sources
+- [ ] Twitter/X may fail due to rate limits or login walls (expected behavior)
 
 ---
 

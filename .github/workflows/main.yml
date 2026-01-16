@@ -21,6 +21,11 @@ jobs:
           python-version: "3.11"
           cache: pip
 
+      - name: Install Chrome for Selenium
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
       - run: pip install -r requirements.txt
 
       - uses: actions/download-artifact@v4
@@ -32,7 +37,7 @@ jobs:
       - run: mkdir -p data reports docs
 
       - name: Run scraper
-        run: python main_cloud.py --scrape --news --classify --report --limit 50
+        run: python main_cloud.py --scrape --news --hwz --twitter --classify --report --limit 50
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
 
